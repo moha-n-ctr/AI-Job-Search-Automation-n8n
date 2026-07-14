@@ -1,0 +1,419 @@
+{
+  "name": "Job_Search_Automation",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "=days",
+              "triggerAtHour": 8
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -2080,
+        -160
+      ],
+      "id": "Your Id",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "url": "Your api.adzuna.com id",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "XXXX",
+              "value": "XXXX"
+            },
+            {
+              "name": "app_key",
+              "value": "XXXX"
+            },
+            {
+              "name": "what",
+              "value": "Data Analyst"
+            },
+            {
+              "name": "where",
+              "value": "India"
+            },
+            {
+              "name": "results_per_page",
+              "value": "50"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        -1680,
+        -160
+      ],
+      "id": "XXXX",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {
+        "jsCode": "const response = $input.first().json;\n\nconst jobs = response.results.map(job => ({\n  company: job.company?.display_name || \"\",\n  title: job.title || \"\",\n  location: job.location?.display_name || \"\",\n  summary: (job.description || \"\").replace(/\\s+/g, \" \").substring(0, 120),\n  apply_link: job.redirect_url || \"\"\n}));\n\nreturn [\n  {\n    json: {\n      jobs\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1392,
+        -160
+      ],
+      "id": "XXXX",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "gemini-2.5-flash",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "key",
+              "value": "XXXX"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        -784,
+        -160
+      ],
+      "id": "XXXX",
+      "name": "HTTP Request1"
+    },
+    {
+      "parameters": {
+        "jsCode": "const jobs = $input.first().json.jobs;\n\nconst prompt = `\nYou are an expert technical recruiter.\n\nYou will receive a JSON array called \"jobs\".\n\nYour task is to FILTER the jobs.\n\n==============================\nKEEP THE JOB IF:\n==============================\n\n1. The title contains any of these:\n\n- Data Analyst\n- Business Analyst\n- Reporting Analyst\n- Operations Analyst\n- Process Analyst\n- MIS Analyst\n- Risk Analyst\n- Financial Analyst\n- BI Analyst\n- Associate Analyst\n- Junior Analyst\n\nAND\n\n2. The description DOES NOT clearly require more than 2 years experience.\n\n==============================\nREJECT IMMEDIATELY IF:\n==============================\n\nThe title OR description contains ANY of:\n\n- Senior\n- Lead\n- Principal\n- Manager\n- Director\n- Architect\n- Consultant\n- Staff Engineer\n\nOR\n\n- 3 years\n- 3+ years\n- 4 years\n- 4+ years\n- 5 years\n- 5+ years\n- 6+ years\n- 7+ years\n- 8+ years\n- 9+ years\n- 10+ years\n\n==============================\nIMPORTANT\n==============================\n\nIf the experience is NOT mentioned,\n\nDO NOT reject it.\n\nInstead:\n\nIf it looks like an entry-level analyst role,\nKEEP it.\n\nOnly reject jobs that clearly require experienced candidates.\n\n==============================\nOUTPUT\n==============================\n\nReturn ONLY valid JSON.\n\nNo markdown.\n\nNo explanation.\n\nReturn exactly:\n\n{\n  \"jobs\": [\n    {\n      \"company\": \"\",\n      \"title\": \"\",\n      \"location\": \"\",\n      \"apply_link\": \"\",\n      \"reason\": \"\"\n    }\n  ]\n}\n\nJobs:\n\n${JSON.stringify(jobs)}\n`;\n\nreturn [\n  {\n    json: {\n      contents: [\n        {\n          parts: [\n            {\n              text: prompt\n            }\n          ]\n        }\n      ]\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1088,
+        -160
+      ],
+      "name": "Code in JavaScript1"
+    },
+    {
+      "parameters": {
+        "jsCode": "const response = $input.first().json;\n\nconst text = response.candidates[0].content.parts[0].text;\n\n// Remove markdown if Gemini ever adds it\nconst cleaned = text\n  .replace(/```json/g, \"\")\n  .replace(/```/g, \"\")\n  .trim();\n\n// Convert JSON string to object\nconst parsed = JSON.parse(cleaned);\n\nreturn [\n  {\n    json: parsed\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -464,
+        -160
+      ],
+      "id": "",
+      "name": "Code in JavaScript2"
+    },
+    {
+      "parameters": {
+        "jsCode": "const jobs = $input.first().json.jobs;\n\nreturn jobs.map(job => ({\n  json: job\n}));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1600,
+        96
+      ],
+      "id": "REMOVED_FOR_GITHUB",
+      "name": "Code in JavaScript3"
+    },
+    {
+      "parameters": {
+        "operation": "write",
+        "fileName": "./output/Daily Jobs.xlsx",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1.1,
+      "position": [
+        -576,
+        96
+      ],
+      "id": "REMOVED_FOR_GITHUB",
+      "name": "Read/Write Files from Disk"
+    },
+    {
+      "parameters": {
+        "operation": "xlsx",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [
+        -880,
+        96
+      ],
+      "id": "REMOVED_FOR_GITHUB",
+      "name": "Convert to File"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Analyze these jobs.\n\n{{ JSON.stringify($json.jobs, null, 2) }}",
+        "options": {
+          "systemMessage": "You are an expert Technical Recruiter.\n\nReturn ONLY Markdown.\n\nCreate a professional email report.\n\nStart with:\n\n# 📊 Daily AI Job Report\n\nThen create a Summary section including:\n\n- Total Jobs\n- High Priority Jobs\n- Medium Priority Jobs\n- Low Priority Jobs\n\nThen analyze every job using this exact format.\n\n---\n\n## Company\n\n⭐ AI Match Score:\n\n💼 Role:\n\n📍 Location:\n\n🔥 Priority:\n\n✅ Decision:\n\n🎯 Why it matches:\n\n📚 Missing Skills:\n\n🧠 Interview Difficulty:\n\n🔗 Apply:\n\n---\n\nAfter all jobs, include:\n\n# 🏆 Top 5 Recommendations\n\nFinally end with:\n\nGenerated automatically by AI Job Search Assistant 🤖\n\nReturn ONLY Markdown.",
+          "maxIterations": 1
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        -1936,
+        336
+      ],
+      "id": "REMOVED_FOR_GITHUB",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        -1952,
+        560
+      ],
+      "id": "REMOVED_FOR_GITHUB",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "YOUR_CREDENTIAL",
+          "name": "YOUR_CREDENTIAL"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const jobs = $input.all().map(item => item.json);\n\nreturn [\n  {\n    json: {\n      jobs\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1392,
+        96
+      ],
+      "id": "REMOVED_FOR_GITHUB",
+      "name": "Code in JavaScript4"
+    },
+    {
+      "parameters": {
+        "sendTo": "YOUR_EMAIL@example.com",
+        "subject": "=Daily AI Job Report - {{$now.format(\"yyyy-MM-dd\")}}",
+        "message": "={{ $json.output }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        -1584,
+        336
+      ],
+      "id": "REMOVED_FOR_GITHUB",
+      "name": "Send a message",
+      "webhookId": "416a08de-c97e-4784-9ba0-098efca12756",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "YOUR_CREDENTIAL",
+          "name": "YOUR_CREDENTIAL"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const jobs = $json.jobs;\n\nconst unique = [];\nconst seen = new Set();\n\nfor (const job of jobs) {\n\n  const key = (\n    (job.company || \"\").trim().toLowerCase() +\n    \"|\" +\n    (job.title || \"\").trim().toLowerCase()\n  );\n\n  if (!seen.has(key)) {\n    seen.add(key);\n    unique.push(job);\n  }\n}\n\nreturn [\n  {\n    json: {\n      jobs: unique\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1184,
+        96
+      ],
+      "id": "REMOVED_FOR_GITHUB",
+      "name": "Code in JavaScript5"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript1": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request1": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript2": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript3": {
+      "main": [
+        [
+          {
+            "node": "Convert to File",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Code in JavaScript4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Convert to File": {
+      "main": [
+        [
+          {
+            "node": "Read/Write Files from Disk",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript4": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript5",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript5": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "REMOVED_FOR_GITHUB",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "REMOVED_FOR_GITHUB"
+  },
+  "id": "yHzvxrDLAFzfwFB9",
+  "tags": []
+}
