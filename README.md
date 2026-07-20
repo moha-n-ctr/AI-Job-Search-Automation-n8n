@@ -115,7 +115,7 @@ Replace the following placeholders with your own values:
 - YOUR_GEMINI_API_KEY
 - YOUR_ADZUNA_APP_ID
 - YOUR_ADZUNA_API_KEY
-- YOUR_EMAIL@example.com
+
 
 ---
 
